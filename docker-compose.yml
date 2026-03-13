@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: blindaje
       POSTGRES_USER: blindaje
       POSTGRES_PASSWORD: blindaje
-      TZ: America/Argentina/Buenos_Aires
+      TZ: UTC  # ← CAMBIAR ESTO
     ports:
       - "5432:5432"
     volumes:
@@ -27,6 +27,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/blindaje
       SPRING_DATASOURCE_USERNAME: blindaje
       SPRING_DATASOURCE_PASSWORD: blindaje
+      TZ: UTC
 
 volumes:
   postgres_data:
