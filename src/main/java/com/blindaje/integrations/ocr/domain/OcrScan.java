@@ -10,9 +10,9 @@ public class OcrScan {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    @Column(columnDefinition = "TEXT")
     private String extractedText;
-
+    @Column(columnDefinition = "TEXT")
     private String imagePath;
 
     private LocalDateTime scannedAt;

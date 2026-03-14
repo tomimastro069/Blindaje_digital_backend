@@ -55,7 +55,7 @@ public class OcrService {
         Path outputTxt = Path.of(outputBase + ".txt");
         String textoExtraido = Files.readString(outputTxt).trim();
 
-        // 4. Parsear campos
+        // 4. Parsear campos (intenta dorso primero, luego frente)
         String dni      = extraerDni(textoExtraido);
         String apellido = extraerApellido(textoExtraido);
         String nombre   = extraerNombre(textoExtraido);
@@ -74,46 +74,67 @@ public class OcrService {
         return ocrScanRepository.save(scan);
     }
 
+    public Optional<OcrScan> buscarPorPropertyId(String propertyId) {
+        return ocrScanRepository.findByPropertyId(propertyId);
+    }
+
     // ─── Helpers de parseo ───────────────────────────────────────────────────
 
     /**
-     * Busca el número de DNI: 7-8 dígitos con o sin puntos
-     * Ej: 47.078.983 o 47078983
+     * Intenta extraer DNI de la MRZ (dorso) primero,
+     * si no encuentra, busca formato con puntos (frente)
      */
     private String extraerDni(String texto) {
-        Pattern p = Pattern.compile("\\b(\\d{1,2}\\.\\d{3}\\.\\d{3}|\\d{7,8})\\b");
-        Matcher m = p.matcher(texto);
-        return m.find() ? m.group().replaceAll("\\.", "") : null;
+        // Dorso: MRZ línea 1 → IDARG47078983
+        Pattern mrzPattern = Pattern.compile("IDARG(\\d{7,8})<");
+        Matcher mrzMatcher = mrzPattern.matcher(texto);
+        if (mrzMatcher.find()) return mrzMatcher.group(1);
+
+        // Frente: 47.078.983 o 47078983
+        Pattern frentePattern = Pattern.compile("\\b(\\d{1,2}\\.\\d{3}\\.\\d{3}|\\d{7,8})\\b");
+        Matcher frenteMatcher = frentePattern.matcher(texto);
+        return frenteMatcher.find() ? frenteMatcher.group().replaceAll("\\.", "") : null;
     }
 
     /**
-     * El DNI argentino tiene: "Apellido / Surname"
-     * En la línea siguiente viene el valor: "MASTROPIETRO"
+     * Intenta extraer apellido de la MRZ (dorso) primero,
+     * si no encuentra, busca etiqueta del frente
      */
-    private String extraerApellido(String texto) {
-        // Busca la etiqueta y captura la línea siguiente (toda en mayúsculas)
-        Pattern p = Pattern.compile(
+        private String extraerApellido(String texto) {
+        // Dorso: busca APELLIDO<< en cualquier parte de la línea, tolerando caracteres raros antes
+        Pattern mrzPattern = Pattern.compile("([A-Z]{4,})<<[A-Z0-9 <]+");
+        Matcher mrzMatcher = mrzPattern.matcher(texto);
+        if (mrzMatcher.find()) return mrzMatcher.group(1);
+
+        // Frente
+        Pattern frentePattern = Pattern.compile(
             "(?i)Apellido\\s*/\\s*Surname[\\s\\r\\n]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s]+)",
             Pattern.UNICODE_CHARACTER_CLASS
         );
-        Matcher m = p.matcher(texto);
-        return m.find() ? m.group(1).trim() : null;
+        Matcher frenteMatcher = frentePattern.matcher(texto);
+        return frenteMatcher.find() ? frenteMatcher.group(1).trim() : null;
     }
 
-    /**
-     * El DNI argentino tiene: "Nombre / Name"
-     * En la línea siguiente viene el valor: "TOMAS ALEJO"
-     */
     private String extraerNombre(String texto) {
-        Pattern p = Pattern.compile(
+        // Dorso: captura entre << y el siguiente 
+        Pattern mrzPattern = Pattern.compile("[A-Z]{4,}<<([A-Z0-9 <]+?)<<");
+        Matcher mrzMatcher = mrzPattern.matcher(texto);
+        if (mrzMatcher.find()) {
+            return mrzMatcher.group(1)
+                .replace("0", "O")   
+                .replace(" O", "O")     // Tesseract confunde O con 0
+                .replaceAll("\\s+", " ")  // elimina espacios dobles
+                .replace("< ", " ")       // limpia < con espacio
+                .replace("<", " ")        // reemplaza < restantes por espacio
+                .trim();
+        }
+
+        // Frente
+        Pattern frentePattern = Pattern.compile(
             "(?i)Nombre\\s*/\\s*Name[\\s\\r\\n]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s]+)",
             Pattern.UNICODE_CHARACTER_CLASS
         );
-        Matcher m = p.matcher(texto);
-        return m.find() ? m.group(1).trim() : null;
+        Matcher frenteMatcher = frentePattern.matcher(texto);
+        return frenteMatcher.find() ? frenteMatcher.group(1).trim() : null;
     }
-
-   public Optional<OcrScan> buscarPorPropertyId(String propertyId) {
-    return ocrScanRepository.findByPropertyId(propertyId);
-}
 }
