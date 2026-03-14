@@ -19,59 +19,93 @@ public class OcrService {
         this.ocrScanRepository = ocrScanRepository;
     }
 
-    public OcrScan procesarImagen(MultipartFile imagen, String propertyId) throws IOException, InterruptedException {
+        public OcrScan procesarImagen(MultipartFile imagen, String propertyId) throws IOException, InterruptedException {
 
-        // 1. Guardar imagen temporalmente
         Path tempDir = Files.createTempDirectory("ocr_");
         Path imagePath = tempDir.resolve("dni_scan.png");
         imagen.transferTo(imagePath.toFile());
 
-        // 2. Invocar Tesseract
-        //    --psm 1 → detecta orientación automáticamente + segmenta
-        //    -l spa+eng → el DNI argentino mezcla ambos idiomas
-        Path outputBase = tempDir.resolve("output");
-        ProcessBuilder pb = new ProcessBuilder(
-            "tesseract",
-            imagePath.toString(),
-            outputBase.toString(),
-            "-l", "spa+eng",
-            "--psm", "1"
-        );
-        pb.redirectErrorStream(true);
-        Process process = pb.start();
+        // Primero intentar con --psm 1 (detección automática de orientación)
+        String textoExtraido = ejecutarTesseract(tempDir, imagePath, -1);
 
-        String tesseractLog;
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream()))) {
-            tesseractLog = reader.lines().reduce("", (a, b) -> a + "\n" + b);
+        // Si no tiene MRZ válida ni texto del frente, probar rotaciones manuales
+        if (!contieneMRZ(textoExtraido) && !contieneFrente(textoExtraido)) {
+            int[] rotaciones = {90, 180, 270};
+            for (int grados : rotaciones) {
+                String texto = ejecutarTesseract(tempDir, imagePath, grados);
+                if (contieneMRZ(texto) || contieneFrente(texto)) {
+                    textoExtraido = texto;
+                    break;
+                }
+            }
         }
 
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            throw new RuntimeException("Tesseract falló (exit " + exitCode + "): " + tesseractLog);
-        }
-
-        // 3. Leer texto generado
-        Path outputTxt = Path.of(outputBase + ".txt");
-        String textoExtraido = Files.readString(outputTxt).trim();
-
-        // 4. Parsear campos (intenta dorso primero, luego frente)
         String dni      = extraerDni(textoExtraido);
         String apellido = extraerApellido(textoExtraido);
         String nombre   = extraerNombre(textoExtraido);
 
-        // 5. Construir y guardar entidad
         OcrScan scan = new OcrScan(textoExtraido, imagePath.toString(), propertyId);
         scan.setDni(dni);
         scan.setApellido(apellido);
         scan.setNombre(nombre);
 
-        // 6. Limpiar temporales
-        Files.deleteIfExists(outputTxt);
-        Files.deleteIfExists(imagePath);
-        Files.deleteIfExists(tempDir);
+        try (var archivos = Files.walk(tempDir)) {
+            archivos.sorted(java.util.Comparator.reverseOrder())
+                    .forEach(p -> {
+                        try { Files.deleteIfExists(p); }
+                        catch (IOException ignored) {}
+                    });
+        }
 
         return ocrScanRepository.save(scan);
+    }
+
+    private String ejecutarTesseract(Path tempDir, Path imagePath, int rotacion) throws IOException, InterruptedException {
+
+        Path imagenProcesada = imagePath;
+        if (rotacion > 0) {
+            imagenProcesada = tempDir.resolve("dni_rot_" + rotacion + ".png");
+            ProcessBuilder rotar = new ProcessBuilder(
+                "convert", imagePath.toString(),
+                "-rotate", String.valueOf(rotacion),
+                imagenProcesada.toString()
+            );
+            rotar.redirectErrorStream(true);
+            rotar.start().waitFor();
+        }
+
+        Path outputBase = tempDir.resolve("output_" + (rotacion == -1 ? "auto" : rotacion));
+        
+        // -1 = usar --psm 1 (auto), cualquier otro = --psm 6 (bloque uniforme)
+        ProcessBuilder pb;
+        if (rotacion == -1) {
+            pb = new ProcessBuilder(
+                "tesseract", imagenProcesada.toString(), outputBase.toString(),
+                "-l", "spa+eng", "--psm", "1"
+            );
+        } else {
+            pb = new ProcessBuilder(
+                "tesseract", imagenProcesada.toString(), outputBase.toString(),
+                "-l", "spa+eng", "--psm", "6"
+            );
+        }
+
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+        process.getInputStream().transferTo(OutputStream.nullOutputStream());
+        process.waitFor();
+
+        Path outputTxt = Path.of(outputBase + ".txt");
+        if (!Files.exists(outputTxt)) return "";
+        return Files.readString(outputTxt).trim();
+    }
+
+    private boolean contieneMRZ(String texto) {
+        return texto.matches("(?s).*IDARG\\d{7,8}.*");
+    }
+
+    private boolean contieneFrente(String texto) {
+        return texto.toLowerCase().contains("apellido") || texto.toLowerCase().contains("surname");
     }
 
     public Optional<OcrScan> buscarPorPropertyId(String propertyId) {
@@ -100,15 +134,23 @@ public class OcrService {
      * Intenta extraer apellido de la MRZ (dorso) primero,
      * si no encuentra, busca etiqueta del frente
      */
-        private String extraerApellido(String texto) {
-        // Dorso: busca APELLIDO<< en cualquier parte de la línea, tolerando caracteres raros antes
-        Pattern mrzPattern = Pattern.compile("([A-Z]{4,})<<[A-Z0-9 <]+");
-        Matcher mrzMatcher = mrzPattern.matcher(texto);
-        if (mrzMatcher.find()) return mrzMatcher.group(1);
+    private String extraerApellido(String texto) {
+        for (String linea : texto.split("\\n")) {
+            linea = linea.trim();
+            java.util.regex.Matcher m = Pattern.compile("([A-Z]{3,})<<[A-Z0-9< ]+").matcher(linea);
+            while (m.find()) {
+                String candidato = m.group(1);
+                if (!candidato.equals("ARG") && 
+                    !candidato.equals("IDARG") && 
+                    !candidato.endsWith("ARG")) {  // ← descarta DARG, IDARG, etc.
+                    return candidato;
+                }
+            }
+        }
 
         // Frente
         Pattern frentePattern = Pattern.compile(
-            "(?i)Apellido\\s*/\\s*Surname[\\s\\r\\n]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s]+)",
+            "(?i).*Apellido\\s*/\\s*Surname[\\s\\r\\n]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s]+)",
             Pattern.UNICODE_CHARACTER_CLASS
         );
         Matcher frenteMatcher = frentePattern.matcher(texto);
@@ -116,22 +158,28 @@ public class OcrService {
     }
 
     private String extraerNombre(String texto) {
-        // Dorso: captura entre << y el siguiente 
-        Pattern mrzPattern = Pattern.compile("[A-Z]{4,}<<([A-Z0-9 <]+?)<<");
-        Matcher mrzMatcher = mrzPattern.matcher(texto);
-        if (mrzMatcher.find()) {
-            return mrzMatcher.group(1)
-                .replace("0", "O")   
-                .replace(" O", "O")     // Tesseract confunde O con 0
-                .replaceAll("\\s+", " ")  // elimina espacios dobles
-                .replace("< ", " ")       // limpia < con espacio
-                .replace("<", " ")        // reemplaza < restantes por espacio
-                .trim();
+        for (String linea : texto.split("\\n")) {
+            linea = linea.trim();
+            java.util.regex.Matcher m = Pattern.compile("([A-Z]{3,})<<([A-Z0-9< ]+)").matcher(linea);
+            while (m.find()) {
+                String apellidoCandidato = m.group(1);
+                if (!apellidoCandidato.equals("ARG") && 
+                    !apellidoCandidato.equals("IDARG") && 
+                    !apellidoCandidato.endsWith("ARG")) {  // ← mismo filtro
+                    return m.group(2)
+                        .replace("0", "O")
+                        .replace(" O", "O")
+                        .replaceAll("[^A-Z ]", "")
+                        .replace("<", " ")
+                        .replaceAll("\\s+", " ")
+                        .trim();
+                }
+            }
         }
 
         // Frente
         Pattern frentePattern = Pattern.compile(
-            "(?i)Nombre\\s*/\\s*Name[\\s\\r\\n]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s]+)",
+            "(?i).*Nombre\\s*/\\s*Name[\\s\\r\\n]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s]+)",
             Pattern.UNICODE_CHARACTER_CLASS
         );
         Matcher frenteMatcher = frentePattern.matcher(texto);
