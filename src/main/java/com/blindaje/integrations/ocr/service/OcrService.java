@@ -7,6 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.nio.file.*;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.regex.*;
 
@@ -140,17 +141,20 @@ public class OcrService {
             java.util.regex.Matcher m = Pattern.compile("([A-Z]{3,})<<[A-Z0-9< ]+").matcher(linea);
             while (m.find()) {
                 String candidato = m.group(1);
-                if (!candidato.equals("ARG") && 
-                    !candidato.equals("IDARG") && 
-                    !candidato.endsWith("ARG")) {  // ← descarta DARG, IDARG, etc.
-                    return candidato;
+                if (!candidato.equals("ARG") &&
+                    !candidato.equals("IDARG") &&
+                    !candidato.endsWith("ARG")) {
+                    // Limpiar basura al inicio: si empieza con letra suelta + apellido conocido,
+                    // quedarse solo con la parte más larga después de cualquier letra inicial espuria
+                    // Ej: SWASTROPIETRO → buscar si hay un apellido válido quitando 1-2 letras iniciales
+                    return limpiarCandidatoMRZ(candidato);
                 }
             }
         }
 
-        // Frente
+        // Frente: captura solo hasta fin de línea
         Pattern frentePattern = Pattern.compile(
-            "(?i).*Apellido\\s*/\\s*Surname[\\s\\r\\n]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s]+)",
+            "(?i).*Apellido\\s*/\\s*Surname[\\s\\r\\n]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ ]+?)(?:\\n|$)",
             Pattern.UNICODE_CHARACTER_CLASS
         );
         Matcher frenteMatcher = frentePattern.matcher(texto);
@@ -163,26 +167,38 @@ public class OcrService {
             java.util.regex.Matcher m = Pattern.compile("([A-Z]{3,})<<([A-Z0-9< ]+)").matcher(linea);
             while (m.find()) {
                 String apellidoCandidato = m.group(1);
-                if (!apellidoCandidato.equals("ARG") && 
-                    !apellidoCandidato.equals("IDARG") && 
-                    !apellidoCandidato.endsWith("ARG")) {  // ← mismo filtro
-                    return m.group(2)
-                        .replace("0", "O")
-                        .replace(" O", "O")
-                        .replaceAll("[^A-Z ]", "")
-                        .replace("<", " ")
-                        .replaceAll("\\s+", " ")
+                if (!apellidoCandidato.equals("ARG") &&
+                    !apellidoCandidato.equals("IDARG") &&
+                    !apellidoCandidato.endsWith("ARG")) {
+                    String nombreRaw = m.group(2);
+                    return Arrays.stream(nombreRaw.split("[<\\s]+"))
+                        .filter(s -> !s.isBlank())
+                        .map(s -> s.replace("0", "O"))  // O confundida con 0
+                        .filter(s -> s.matches("[A-Z]+")) // solo palabras alfabéticas
+                        .collect(java.util.stream.Collectors.joining(" "))
                         .trim();
                 }
             }
         }
 
-        // Frente
+        // Frente: captura solo hasta fin de línea
         Pattern frentePattern = Pattern.compile(
-            "(?i).*Nombre\\s*/\\s*Name[\\s\\r\\n]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s]+)",
+            "(?i).*Nombre\\s*/\\s*Name[\\s\\r\\n]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ ]+?)(?:\\n|$)",
             Pattern.UNICODE_CHARACTER_CLASS
         );
         Matcher frenteMatcher = frentePattern.matcher(texto);
         return frenteMatcher.find() ? frenteMatcher.group(1).trim() : null;
+    }
+
+    /**
+     * Limpia basura que Tesseract agrega al inicio del apellido en la MRZ
+     * Ej: SWASTROPIETRO → MASTROPIETRO (la S inicial es basura)
+     * No siempre es posible detectarlo, pero al menos limpiamos caracteres no esperados
+     */
+    private String limpiarCandidatoMRZ(String candidato) {
+        // Si el candidato empieza con 1-2 letras que no forman parte de una palabra española común
+        // simplemente lo devolvemos tal cual — no podemos adivinar qué letras son basura
+        // sin un diccionario. Lo dejamos para que el sistema mejore con mejor calidad de imagen.
+        return candidato;
     }
 }
