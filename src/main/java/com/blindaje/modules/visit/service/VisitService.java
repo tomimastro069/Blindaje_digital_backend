@@ -1,5 +1,6 @@
 package com.blindaje.modules.visit.service;
 
+import com.blindaje.core.notification.service.NotificacionService;
 import com.blindaje.modules.visit.domain.Visit;
 import com.blindaje.modules.visit.Dto.VisitRequest;
 import com.blindaje.modules.visit.repository.VisitRepository;
@@ -11,9 +12,12 @@ import java.util.List;
 public class VisitService {
 
     private final VisitRepository visitRepository;
+    private final NotificacionService notificacionService;
 
-    public VisitService(VisitRepository visitRepository) {
+    public VisitService(VisitRepository visitRepository,
+                        NotificacionService notificacionService) {
         this.visitRepository = visitRepository;
+        this.notificacionService = notificacionService;
     }
 
     public Visit crearVisita(VisitRequest request, Long residentId, String tenantId) {
@@ -26,7 +30,18 @@ public class VisitService {
                 tenantId,
                 residentId
         );
-        return visitRepository.save(visit);
+        Visit saved = visitRepository.save(visit);
+
+        // Notificar a todos los guardias del tenant en tiempo real
+        notificacionService.notificarTenant(
+                tenantId,
+                "Nueva visita registrada",
+                "El visitante " + request.getVisitorName() +
+                " (DNI: " + request.getVisitorDocument() + ")" +
+                " tiene una visita programada para " + request.getScheduledAt()
+        );
+
+        return saved;
     }
 
     public List<Visit> obtenerVisitasPorResidente(Long residentId) {

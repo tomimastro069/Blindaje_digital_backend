@@ -37,6 +37,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/ocr/**").permitAll()
                         .requestMatchers("/api/test-data/**").permitAll()
                         .requestMatchers("/api/users/setup").permitAll()
+                        .requestMatchers("/ws/**").permitAll() 
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
