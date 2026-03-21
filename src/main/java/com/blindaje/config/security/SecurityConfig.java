@@ -36,8 +36,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/ocr/**").permitAll()
                         .requestMatchers("/api/test-data/**").permitAll()
-                        .requestMatchers("/api/users/setup").permitAll()
+                        .requestMatchers("/api/users/setup").hasRole("ADMIN") // Solo el admin puede acceder a esta ruta para crear el primer usuario
                         .requestMatchers("/ws/**").permitAll() 
+                        .requestMatchers("/api/users/setup").hasRole("ADMIN")
+                        .requestMatchers("/api/users", "/api/users/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
