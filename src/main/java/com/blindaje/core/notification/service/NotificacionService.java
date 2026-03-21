@@ -4,6 +4,9 @@ import com.blindaje.core.notification.domain.Notificacion;
 import com.blindaje.core.notification.repository.NotificacionRepository;
 import com.blindaje.modules.user.domain.User;
 import com.blindaje.modules.user.repository.UserRepository;
+
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
 @Service
@@ -37,6 +40,20 @@ public class NotificacionService {
 
         // Enviar al usuario por su username
         webSocketPublisher.publishToUser(user.getUsername(), "/queue/notificaciones", new NotificacionPayload(title, message));
+    }
+
+    public List<Notificacion> obtenerPendientes(Long userId) {
+        return notificacionRepository.findByRecipientIdAndReadFalse(userId.toString());
+    }
+
+    public void marcarComoLeida(Long notificacionId, Long userId) {
+        Notificacion notificacion = notificacionRepository.findById(notificacionId)
+                .orElseThrow(() -> new RuntimeException("Notificacion no encontrada"));
+        if (!notificacion.getRecipientId().equals(userId.toString())) {
+            throw new RuntimeException("No tenes permiso para marcar esta notificacion");
+        }
+        notificacion.setRead(true);
+        notificacionRepository.save(notificacion);
     }
 
     public static class NotificacionPayload {
