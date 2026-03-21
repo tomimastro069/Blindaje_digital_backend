@@ -12,7 +12,13 @@ public class WebSocketPublisher {
         this.messagingTemplate = messagingTemplate;
     }
 
+    // Broadcast a todos los suscriptores del topic
     public void publish(String destination, Object payload) {
         messagingTemplate.convertAndSend(destination, payload);
+    }
+
+    // Mensaje directo a un usuario específico por su username
+    public void publishToUser(String username, String destination, Object payload) {
+        messagingTemplate.convertAndSendToUser(username, destination, payload);
     }
 }
