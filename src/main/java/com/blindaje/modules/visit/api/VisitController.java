@@ -2,6 +2,7 @@ package com.blindaje.modules.visit.api;
 
 import com.blindaje.config.security.JwtTokenProvider;
 import com.blindaje.modules.visit.domain.Visit;
+import com.blindaje.modules.visit.Dto.CompanionRequest;
 import com.blindaje.modules.visit.Dto.VisitRequest;
 import com.blindaje.modules.visit.service.VisitService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,6 +49,13 @@ public class VisitController {
         String token = extraerToken(httpRequest);
         String tenantId = jwtTokenProvider.getTenantIdFromToken(token);
         return ResponseEntity.ok(visitService.obtenerVisitasPorTenant(tenantId));
+    }
+    // Agregar acompañantes a una visita
+    @PostMapping("/{visitId}/acompanantes")
+    public ResponseEntity<Visit> agregarAcompanantes(@PathVariable Long visitId,
+                                                    @RequestBody CompanionRequest request,
+                                                    HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(visitService.agregarAcompanantes(visitId, request));
     }
 
     private String extraerToken(HttpServletRequest request) {
