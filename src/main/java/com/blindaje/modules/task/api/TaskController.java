@@ -6,6 +6,8 @@ import com.blindaje.modules.task.domain.TaskStatus;
 import com.blindaje.modules.task.dto.TaskRequest;
 import com.blindaje.modules.task.service.TaskService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,7 +27,7 @@ public class TaskController {
 
     // Guardia crea una tarea
     @PostMapping
-    public ResponseEntity<Task> crearTarea(@RequestBody TaskRequest request,
+    public ResponseEntity<Task> crearTarea(@Valid @RequestBody TaskRequest request,
                                             HttpServletRequest httpRequest) {
         String token = extraerToken(httpRequest);
         Long guardId = jwtTokenProvider.getUserIdFromToken(token);

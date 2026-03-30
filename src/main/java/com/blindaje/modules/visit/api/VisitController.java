@@ -6,6 +6,8 @@ import com.blindaje.modules.visit.Dto.CompanionRequest;
 import com.blindaje.modules.visit.Dto.VisitRequest;
 import com.blindaje.modules.visit.service.VisitService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,7 +27,7 @@ public class VisitController {
 
     // Residente crea una visita pre-autorizada
     @PostMapping
-    public ResponseEntity<Visit> crearVisita(@RequestBody VisitRequest request,
+    public ResponseEntity<Visit> crearVisita(@Valid @RequestBody VisitRequest request,
                                               HttpServletRequest httpRequest) {
         String token = extraerToken(httpRequest);
         Long residentId = jwtTokenProvider.getUserIdFromToken(token);
@@ -53,7 +55,7 @@ public class VisitController {
     // Agregar acompañantes a una visita
     @PostMapping("/{visitId}/acompanantes")
     public ResponseEntity<Visit> agregarAcompanantes(@PathVariable Long visitId,
-                                                    @RequestBody CompanionRequest request,
+                                                    @Valid @RequestBody CompanionRequest request,
                                                     HttpServletRequest httpRequest) {
         return ResponseEntity.ok(visitService.agregarAcompanantes(visitId, request));
     }

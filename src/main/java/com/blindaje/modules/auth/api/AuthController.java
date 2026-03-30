@@ -1,6 +1,9 @@
 package com.blindaje.modules.auth.api;
 
 import com.blindaje.modules.auth.service.AuthService;
+
+import jakarta.validation.Valid;
+
 import com.blindaje.modules.auth.dto.LoginRequest;
 import com.blindaje.modules.auth.dto.LoginResponse;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +20,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 }

@@ -6,6 +6,11 @@ import com.blindaje.modules.user.domain.User;
 import com.blindaje.modules.user.dto.UserResponse;
 import com.blindaje.modules.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +29,7 @@ public class UserController {
     }
 
     @PostMapping("/setup")
-    public ResponseEntity<?> setup(@RequestBody SetupRequest request) {
+    public ResponseEntity<?> setup(@Valid @RequestBody SetupRequest request) {
         User user = userService.crearUsuario(
                 request.getUsername(),
                 request.getPassword(),
@@ -39,11 +44,9 @@ public class UserController {
     @GetMapping
     public ResponseEntity<List<UserResponse>> listarUsuarios(HttpServletRequest request) {
         try {
-            System.out.println(">>> Llegó al controller listarUsuarios");
             String token = extraerToken(request);
-            System.out.println(">>> Token extraido: " + (token != null ? "ok" : "null"));
             String tenantId = jwtTokenProvider.getTenantIdFromToken(token);
-            System.out.println(">>> tenantId: " + tenantId);
+            
             List<UserResponse> usuarios = userService.listarUsuariosPorTenant(tenantId)
                     .stream()
                     .map(u -> new UserResponse(
@@ -73,19 +76,34 @@ public class UserController {
         throw new RuntimeException("Token no encontrado");
     }
 
-    static class SetupRequest {
-        private String username;
-        private String password;
-        private String email;
-        private String fullName;
-        private String role;
-        private String tenantId;
+   static class SetupRequest {
 
-        public String getUsername() { return username; }
-        public String getPassword() { return password; }
-        public String getEmail() { return email; }
-        public String getFullName() { return fullName; }
-        public String getRole() { return role; }
-        public String getTenantId() { return tenantId; }
-    }
+    @NotBlank(message = "El username no puede estar vacío")
+    @Size(min = 3, max = 50, message = "El username debe tener entre 3 y 50 caracteres")
+    private String username;
+
+    @NotBlank(message = "La contraseña no puede estar vacía")
+    @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
+    private String password;
+
+    @NotBlank(message = "El email no puede estar vacío")
+    @Email(message = "El email no tiene un formato válido")
+    private String email;
+
+    @NotBlank(message = "El nombre completo no puede estar vacío")
+    private String fullName;
+
+    @NotBlank(message = "El rol no puede estar vacío")
+    private String role;
+
+    @NotBlank(message = "El tenantId no puede estar vacío")
+    private String tenantId;
+
+    public String getUsername() { return username; }
+    public String getPassword() { return password; }
+    public String getEmail() { return email; }
+    public String getFullName() { return fullName; }
+    public String getRole() { return role; }
+    public String getTenantId() { return tenantId; }
+}
 }
