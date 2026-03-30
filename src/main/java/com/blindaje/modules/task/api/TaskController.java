@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class TaskController {
 
     // Guardia crea una tarea
     @PostMapping
+    @PreAuthorize("hasRole('GUARD')")
     public ResponseEntity<Task> crearTarea(@Valid @RequestBody TaskRequest request,
                                             HttpServletRequest httpRequest) {
         String token = extraerToken(httpRequest);
@@ -38,6 +40,7 @@ public class TaskController {
 
     // Guardia ve sus tareas asignadas
     @GetMapping("/mis-tareas")
+    @PreAuthorize("hasRole('GUARD')")
     public ResponseEntity<List<Task>> misTareas(HttpServletRequest httpRequest) {
         String token = extraerToken(httpRequest);
         Long guardId = jwtTokenProvider.getUserIdFromToken(token);
@@ -46,6 +49,7 @@ public class TaskController {
 
     // Guardia actualiza el estado de una tarea
     @PatchMapping("/{taskId}/estado")
+    @PreAuthorize("hasRole('GUARD')")
     public ResponseEntity<Task> actualizarEstado(@PathVariable Long taskId,
                                                   @RequestParam TaskStatus estado,
                                                   HttpServletRequest httpRequest) {
@@ -56,6 +60,7 @@ public class TaskController {
 
     // Admin ve todas las tareas del tenant
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Task>> todasLasTareas(HttpServletRequest httpRequest) {
         String token = extraerToken(httpRequest);
         String tenantId = jwtTokenProvider.getTenantIdFromToken(token);
@@ -63,6 +68,7 @@ public class TaskController {
     }
 
     @PatchMapping("/{taskId}/observaciones")
+    @PreAuthorize("hasRole('GUARD')")
     public ResponseEntity<Task> agregarObservaciones(@PathVariable Long taskId,
                                                   @RequestParam String observaciones,
                                                   HttpServletRequest httpRequest) {

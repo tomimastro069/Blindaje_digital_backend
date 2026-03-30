@@ -12,6 +12,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,6 +30,7 @@ public class UserController {
     }
 
     @PostMapping("/setup")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> setup(@Valid @RequestBody SetupRequest request) {
         User user = userService.crearUsuario(
                 request.getUsername(),
@@ -42,6 +44,7 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserResponse>> listarUsuarios(HttpServletRequest request) {
         try {
             String token = extraerToken(request);
@@ -63,6 +66,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> eliminarUsuario(@PathVariable Long id) {
         UserResponse usuario = userService.eliminarUsuario(id);
         return ResponseEntity.ok(usuario);

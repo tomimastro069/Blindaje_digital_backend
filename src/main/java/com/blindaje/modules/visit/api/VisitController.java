@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class VisitController {
 
     // Residente crea una visita pre-autorizada
     @PostMapping
+    @PreAuthorize("hasRole('RESIDENT')")
     public ResponseEntity<Visit> crearVisita(@Valid @RequestBody VisitRequest request,
                                               HttpServletRequest httpRequest) {
         String token = extraerToken(httpRequest);
@@ -39,6 +41,7 @@ public class VisitController {
 
     // Residente ve sus propias visitas
     @GetMapping("/mis-visitas")
+    @PreAuthorize("hasRole('RESIDENT')")
     public ResponseEntity<List<Visit>> misVisitas(HttpServletRequest httpRequest) {
         String token = extraerToken(httpRequest);
         Long residentId = jwtTokenProvider.getUserIdFromToken(token);
@@ -46,6 +49,7 @@ public class VisitController {
     }
 
     // Guardia ve todas las visitas del tenant
+    @PreAuthorize("hasRole('GUARD') or hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<List<Visit>> todasLasVisitas(HttpServletRequest httpRequest) {
         String token = extraerToken(httpRequest);
@@ -54,6 +58,7 @@ public class VisitController {
     }
     // Agregar acompañantes a una visita
     @PostMapping("/{visitId}/acompanantes")
+    @PreAuthorize("hasRole('RESIDENT')")
     public ResponseEntity<Visit> agregarAcompanantes(@PathVariable Long visitId,
                                                     @Valid @RequestBody CompanionRequest request,
                                                     HttpServletRequest httpRequest) {
