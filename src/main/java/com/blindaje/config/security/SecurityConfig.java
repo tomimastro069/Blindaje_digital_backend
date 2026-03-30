@@ -23,7 +23,7 @@ public class SecurityConfig {
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
                           CustomUserDetailsService customUserDetailsService) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.customUserDetailsService = customUserDetailsService;
+        this.customUserDetailsService = customUserDetailsService;   
     }
 
     @Bean
@@ -36,11 +36,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/ocr/**").permitAll()
                         .requestMatchers("/api/test-data/**").permitAll()
-                        .requestMatchers("/api/users/setup").hasRole("ADMIN") // Solo el admin puede acceder a esta ruta para crear el primer usuario
-                        .requestMatchers("/ws/**").permitAll() 
-                        .requestMatchers("/api/users/setup").hasRole("ADMIN")
                         .requestMatchers("/api/users", "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers("/ws/**").permitAll()
                         .anyRequest().authenticated())
+                .addFilterBefore(rateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
@@ -61,5 +60,9 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+    @Bean
+    public RateLimitFilter rateLimitFilter() {
+        return new RateLimitFilter();
     }
 }
