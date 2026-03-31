@@ -29,8 +29,7 @@ public class VisitController {
     // Residente crea una visita pre-autorizada
     @PostMapping
     @PreAuthorize("hasRole('RESIDENT')")
-    public ResponseEntity<Visit> crearVisita(@Valid @RequestBody VisitRequest request,
-                                              HttpServletRequest httpRequest) {
+    public ResponseEntity<Visit> crearVisita(@Valid @RequestBody VisitRequest request, HttpServletRequest httpRequest) {
         String token = extraerToken(httpRequest);
         Long residentId = jwtTokenProvider.getUserIdFromToken(token);
         String tenantId = jwtTokenProvider.getTenantIdFromToken(token);
@@ -56,12 +55,13 @@ public class VisitController {
         String tenantId = jwtTokenProvider.getTenantIdFromToken(token);
         return ResponseEntity.ok(visitService.obtenerVisitasPorTenant(tenantId));
     }
+
     // Agregar acompañantes a una visita
     @PostMapping("/{visitId}/acompanantes")
     @PreAuthorize("hasRole('RESIDENT')")
     public ResponseEntity<Visit> agregarAcompanantes(@PathVariable Long visitId,
-                                                    @Valid @RequestBody CompanionRequest request,
-                                                    HttpServletRequest httpRequest) {
+            @Valid @RequestBody CompanionRequest request,
+            HttpServletRequest httpRequest) {
         return ResponseEntity.ok(visitService.agregarAcompanantes(visitId, request));
     }
 
