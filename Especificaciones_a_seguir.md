@@ -24,18 +24,37 @@
 src/main/java/com/blindaje/
 ├── config/
 │   ├── security/           → JWT, filtros, Spring Security
-│   └── websocket/          → WebSocket config, interceptor, event listener
+│   ├── websocket/          → WebSocket config, interceptor, event listener
+│   ├── tenancy/            → Tenant context y filtro de multi-tenancy
+│   ├── jackson/            → ObjectMapper config
+│   └── ApplicationConfig.java
 ├── core/
-│   └── notification/       → Sistema de notificaciones (domain, repository, service, publisher)
+│   ├── notification/       → Sistema de notificaciones (domain, repository, service, publisher)
+│   ├── event/              → Sistema de eventos/audit trail
+│   ├── turn/               → Turnos de guardia
+│   ├── reporting/           → Reportes
+│   └── TestDataController  → Datos de prueba
 ├── integrations/
-│   └── ocr/                → OCR con Tesseract (domain, repository, service, controller)
+│   ├── ocr/                → OCR con Tesseract (domain, repository, service, controller)
+│   ├── camera/             → Cámaras de seguridad
+│   ├── lpr/                 → License Plate Recognition (adapter)
+│   ├── gps/                 → GPS tracking (adapter)
+│   ├── facial/              → Reconocimiento facial (adapter)
+│   └── image/               → Gestión de imágenes
 ├── modules/
 │   ├── auth/               → Login, DTOs de auth
 │   ├── task/               → Tareas del guardia
 │   ├── user/               → Usuarios, roles
-│   └── visit/              → Visitas, acompañantes
+│   ├── visit/              → Visitas, acompañantes
+│   ├── property/           → Propiedades/unidades (EN DESARROLLO)
+│   ├── emergency/           → Emergencias (EN DESARROLLO)
+│   ├── incident/           → Incidentes (EN DESARROLLO)
+│   ├── package/            → Paquetería (EN DESARROLLO)
+│   ├── provider/           → Proveedores (EN DESARROLLO)
+│   └── round/              → Rondas de guardia (EN DESARROLLO)
 └── shared/
-    └── exception/          → GlobalExceptionHandler, BusinessException
+    ├── exception/          → GlobalExceptionHandler, BusinessException
+    └── util/               → Utilidades compartidas
 ```
 
 ---
@@ -54,7 +73,7 @@ src/main/java/com/blindaje/
 ## SEGURIDAD — REGLAS OBLIGATORIAS
 
 ### JWT
-- Algoritmo: HS384
+- Algoritmo: HS384 (verificar que la clave sea compatible con HS384)
 - Expiración: 24 horas (86400000 ms)
 - Clave secreta: variable de entorno `JWT_SECRET` (nunca hardcodeada)
 - Payload del token: `sub` (username), `role`, `userId`, `tenantId`, `iat`, `exp`
@@ -102,8 +121,10 @@ Todo controller DEBE tener `@PreAuthorize` en cada endpoint. Reglas actuales:
 | `PATCH /api/tasks/{id}/estado` | GUARD |
 | `PATCH /api/tasks/{id}/observaciones` | GUARD |
 | `GET /api/tasks` | ADMIN |
-| `GET /api/notificaciones/pendientes` | Cualquier autenticado |
-| `PATCH /api/notificaciones/{id}/leer` | Cualquier autenticado |
+| `GET /api/notificaciones/pendientes` | Cualquier autenticado (no requiere @PreAuthorize explícito) |
+| `PATCH /api/notificaciones/{id}/leer` | Cualquier autenticado (no requiere @PreAuthorize explícito) |
+
+> **Nota:** Los endpoints de notificaciones no necesitan `@PreAuthorize` porque el documento ya especifica "cualquier autenticado" y Spring Security por defecto requiere autenticación para todo lo que no sea público. Agregar `@PreAuthorize` explícito sería redundante.
 
 ### Contraseñas
 - Siempre encriptadas con BCrypt
@@ -118,6 +139,7 @@ Todo controller DEBE tener `@PreAuthorize` en cada endpoint. Reglas actuales:
 - **Toda consulta a la DB que liste datos debe filtrar por `tenantId`**
 - El `tenantId` se extrae siempre del token, nunca del body del request
 - Nunca confiar en el `tenantId` que mande el cliente
+- Implementado con `TenantContext` y `TenantFilter` en `config/tenancy/`
 
 ---
 
@@ -159,6 +181,7 @@ Centralizado en `GlobalExceptionHandler` (`com.blindaje.shared.exception`).
 | `Exception` (genérica) | 500 | `{timestamp, status, message: "Internal server error"}` |
 
 **Nunca** exponer stack traces en producción. **Nunca** retornar mensajes de error genéricos sin estructura.
+**Nunca** usar `e.printStackTrace()` en controllers o servicios — siempre usar logging.
 
 ---
 
@@ -204,6 +227,8 @@ Centralizado en `GlobalExceptionHandler` (`com.blindaje.shared.exception`).
 ### Endpoints de notificaciones
 - `GET /api/notificaciones/pendientes` → notificaciones no leídas del usuario autenticado
 - `PATCH /api/notificaciones/{id}/leer` → marcar como leída (solo el destinatario)
+
+> **Nota:** Estos endpoints NO requieren `@PreAuthorize` explícito porque Spring Security ya requiere autenticación por defecto para rutas protegidas. Agregar `@PreAuthorize` sería redundante.
 
 ---
 
@@ -262,25 +287,109 @@ Siempre usar `UserResponse` DTO (nunca exponer la entidad `User` directamente pa
 
 ---
 
-## OCR (Integración Tesseract)
+## MÓDULOS EN DESARROLLO
 
-### Flujo
-1. Recibe imagen como `MultipartFile`
-2. Guarda en directorio temporal
-3. Intenta con `--psm 1` (detección automática de orientación)
-4. Si falla, prueba rotaciones manuales (90°, 180°, 270°) con ImageMagick
-5. Extrae texto con idiomas `spa+eng`
-6. Parsea DNI, apellido y nombre del texto extraído
-7. Guarda en DB y limpia archivos temporales
+### Módulo Propiedades
+- **Ubicación:** `modules/property/`
+- **Estado:** EN DESARROLLO
+- **Entidad:** `Propiedad` (nombre, dirección, tenantId, etc.)
 
-### Parsing DNI argentino
-- **Dorso (MRZ)**: `IDARG{DNI}<` en línea 1, `APELLIDO<<NOMBRE<` en línea 3
-- **Frente**: etiquetas `Apellido / Surname` y `Nombre / Name`
-- Prioridad: MRZ primero, frente como fallback
+### Módulo Emergencias
+- **Ubicación:** `modules/emergency/`
+- **Estado:** EN DESARROLLO
+- **Entidades:** `Emergencia`, `EmergenciaStatus`
+- **Endpoints:** Pendientes de implementar
 
-### Endpoints
-- `POST /api/ocr/scan` → procesar imagen (multipart: `imagen`, `propertyId`)
-- `GET /api/ocr/scan/{propertyId}` → consultar último scan
+### Módulo Incidentes
+- **Ubicación:** `modules/incident/`
+- **Estado:** EN DESARROLLO
+- **Entidades:** `Incidente`, `IncidenteStatus`
+- **Endpoints:** Pendientes de implementar
+
+### Módulo Paquetería
+- **Ubicación:** `modules/packagemodule/`
+- **Estado:** EN DESARROLLO
+- **Endpoints:** Pendientes de implementar
+
+### Módulo Proveedores
+- **Ubicación:** `modules/provider/`
+- **Estado:** EN DESARROLLO
+- **Entidades:** `ProviderEntry`
+- **Endpoints:** Pendientes de implementar
+
+### Módulo Rondas
+- **Ubicación:** `modules/round/`
+- **Estado:** EN DESARROLLO
+- **Entidades:** `Round`, `RoundCheckpoint`
+- **Endpoints:** Pendientes de implementar
+
+---
+
+## INTEGRACIONES (Adapters)
+
+### OCR (Integración Tesseract)
+- **Ubicación:** `integrations/ocr/`
+- **Estado:** Implementado
+- **Flujo:**
+  1. Recibe imagen como `MultipartFile`
+  2. Guarda en directorio temporal
+  3. Intenta con `--psm 1` (detección automática de orientación)
+  4. Si falla, prueba rotaciones manuales (90°, 180°, 270°) con ImageMagick
+  5. Extrae texto con idiomas `spa+eng`
+  6. Parsea DNI, apellido y nombre del texto extraído
+  7. Guarda en DB y limpia archivos temporales
+- **Parsing DNI argentino:**
+  - **Dorso (MRZ):** `IDARG{DNI}<` en línea 1, `APELLIDO<<NOMBRE<` en línea 3
+  - **Frente:** etiquetas `Apellido / Surname` y `Nombre / Name`
+  - Prioridad: MRZ primero, frente como fallback
+- **Endpoints:**
+  - `POST /api/ocr/scan` → procesar imagen (multipart: `imagen`, `propertyId`)
+  - `GET /api/ocr/scan/{propertyId}` → consultar último scan
+
+### Cámaras
+- **Ubicación:** `integrations/camera/`
+- **Estado:** EN DESARROLLO
+- **Entidad:** `Camera`
+
+### LPR (License Plate Recognition)
+- **Ubicación:** `integrations/lpr/`
+- **Estado:** EN DESARROLLO
+- **Adapter:** `LprAdapter`
+
+### GPS
+- **Ubicación:** `integrations/gps/`
+- **Estado:** EN DESARROLLO
+- **Adapter:** `GpsAdapter`
+
+### Reconocimiento Facial
+- **Ubicación:** `integrations/facial/`
+- **Estado:** EN DESARROLLO
+- **Adapter:** `ReconocimientoFacialAdapter`
+
+### Gestión de Imágenes
+- **Ubicación:** `integrations/image/`
+- **Estado:** EN DESARROLLO
+- **Entidad:** `Image`
+
+---
+
+## CORE (Compartido)
+
+### Eventos / Audit Trail
+- **Ubicación:** `core/event/`
+- **Estado:** Implementado parcialmente
+- **Entidades:** `Evento`, `EventoType`, `Severidad`
+- **Servicios:** `EventoService`, `EventoDispatcher`
+
+### Turnos
+- **Ubicación:** `core/turn/`
+- **Estado:** EN DESARROLLO
+- **Entidad:** `Turno`
+
+### Reportes
+- **Ubicación:** `core/reporting/`
+- **Estado:** EN DESARROLLO
+- **DTOs:** `ReporteResponse`
 
 ---
 
@@ -303,6 +412,7 @@ Siempre usar `UserResponse` DTO (nunca exponer la entidad `User` directamente pa
 - [ ] Refresh token (expiración silenciosa sin re-login)
 - [ ] Entry/exit time del visitante (endpoints del guardia)
 - [ ] Remover logs de debug (`System.out.println`) del `JwtAuthenticationFilter`
+- [ ] Remover `e.printStackTrace()` del `UserController`
 
 ### Media prioridad
 - [ ] Rate limiting en más endpoints (no solo login)
@@ -311,26 +421,35 @@ Siempre usar `UserResponse` DTO (nunca exponer la entidad `User` directamente pa
 - [ ] Endpoint para cambiar estado de usuario (ACTIVE/INACTIVE/SUSPENDED)
 - [ ] Logs estructurados con SLF4J (reemplazar System.out.println)
 
+### Módulos por completar
+- [ ] Propiedades — CRUD completo y endpoints
+- [ ] Emergencias — implementar endpoints
+- [ ] Incidentes — implementar endpoints
+- [ ] Paquetería — implementar endpoints
+- [ ] Proveedores — implementar endpoints
+- [ ] Rondas — implementar endpoints
+- [ ] Cámaras — lógica de integración
+- [ ] LPR — lógica de integración
+- [ ] GPS — lógica de integración
+- [ ] Reconocimiento facial — lógica de integración
+- [ ] Imágenes — gestión completa
+- [ ] Turnos — lógica de turnos de guardia
+- [ ] Reportes — generación de reportes
+
 ### Baja prioridad / futuro
-- [ ] Módulo emergencias
-- [ ] Módulo incidentes
-- [ ] Módulo paquetería
-- [ ] Módulo proveedores
-- [ ] Módulo rondas
-- [ ] Integración LPR
-- [ ] Integración GPS
-- [ ] Refresh token completo
 - [ ] Exportación CSV de reportes
+- [ ] Integración con sistemas externos
 
 ---
 
 ## CONVENCIONES DE CÓDIGO
 
 ### Controllers
-- Siempre tienen `@PreAuthorize` en cada endpoint
+- Siempre tienen `@PreAuthorize` en cada endpoint (excepto notificaciones — ver nota)
 - El token se extrae con el método privado `extraerToken(HttpServletRequest)`
 - El `userId` y `tenantId` siempre se extraen del token, nunca del body
 - Los DTOs de entrada siempre usan `@Valid`
+- **Nunca** usar `System.out.println()` ni `e.printStackTrace()` — usar SLF4J logger
 
 ### Services
 - Nunca exponen entidades JPA directamente si tienen datos sensibles
