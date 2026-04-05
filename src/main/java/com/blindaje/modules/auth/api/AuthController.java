@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 
 import com.blindaje.modules.auth.dto.LoginRequest;
 import com.blindaje.modules.auth.dto.LoginResponse;
+import com.blindaje.modules.auth.dto.RefreshRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,5 +23,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authService.refreshToken(request.getRefreshToken()));
     }
 }

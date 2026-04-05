@@ -7,16 +7,16 @@ Este documento lista todas las funcionalidades que faltan por implementar en el 
 ## 1. PENDIENTES DE IMPLEMENTAR (ALTA PRIORIDAD)
 
 ### Configuración de Producción
-- [ ] Deshabilitar `show-sql` en producción (`spring.jpa.show-sql=false`)
-- [ ] Configurar `spring.jpa.open-in-view=false`
+- [x] Deshabilitar `show-sql` en producción (`spring.jpa.show-sql=false`)
+- [x] Configurar `spring.jpa.open-in-view=false`
 
 ### Seguridad
-- [ ] Implementar Refresh Token (expiración silenciosa sin re-login)
-- [ ] Remover logs de debug (`System.out.println`) del `JwtAuthenticationFilter`
-- [ ] Remover `e.printStackTrace()` del `UserController`
+- [x] Implementar Refresh Token (expiración silenciosa sin re-login)
+- [x] Remover logs de debug (`System.out.println`) del `JwtAuthenticationFilter`
+- [x] Remover `e.printStackTrace()` del `UserController`
 
 ### Visitas
-- [ ] Implementar entry/exit time del visitante (endpoints del guardia)
+- [x] Implementar entry/exit time del visitante (endpoints del guardia)
 
 ---
 
@@ -37,12 +37,12 @@ Este documento lista todas las funcionalidades que faltan por implementar en el 
 - [ ] CRUD completo de propiedades
 - [ ] Endpoints API para gestión de propiedades
 - [ ] Servicio `PropiedadService` vacío requiere implementación completa
-
+---
 ### Módulo Emergencias (`modules/emergency/`)
-- [ ] Implementar lógica de gestión de emergencias
-- [ ] Endpoints para crear, listar, actualizar emergencias
-- [ ] Servicio `EmergenciaService` vacío requiere implementación completa
-
+- [x] Implementar lógica de gestión de emergencias
+- [x] Endpoints para crear, listar, actualizar emergencias
+- [x] Servicio `EmergenciaService` vacío requiere implementación completa
+---
 ### Módulo Incidentes (`modules/incident/`)
 - [ ] Implementar lógica de gestión de incidentes
 - [ ] Endpoints para crear, listar, actualizar incidentes
@@ -57,13 +57,13 @@ Este documento lista todas las funcionalidades que faltan por implementar en el 
 - [ ] Implementar lógica de gestión de proveedores/visitas de trabajo
 - [ ] Endpoints para registrar entrada/salida de proveedores
 - [ ] Servicio `ProviderService` vacío requiere implementación completa
-
+---
 ### Módulo Rondas (`modules/round/`)
-- [ ] Implementar lógica de gestión de rondas de guardia
-- [ ] Endpoints para crear, iniciar, completar rondas
-- [ ] Gestión de checkpoints
-- [ ] Servicio `RoundService` vacío requiere implementación completa
-
+- [x] Implementar lógica de gestión de rondas de guardia
+- [x] Endpoints para crear, iniciar, completar rondas
+- [x] Gestión de checkpoints
+- [x] Servicio `RoundService` vacío requiere implementación completa
+---
 ### Módulo Turnos (`core/turn/`)
 - [ ] Implementar lógica de turnos de guardia
 - [ ] Endpoints para gestión de horarios de guardias
@@ -122,13 +122,13 @@ Este documento lista todas las funcionalidades que faltan por implementar en el 
 
 | Categoría | Cantidad de items pendientes |
 |-----------|------------------------------|
-| Alta prioridad | 6 |
+| Alta prioridad | 0 |
 | Media prioridad | 5 |
-| Módulos por completar | 7 |
+| Módulos por completar | 5 |
 | Integraciones | 5 |
 | Core | 1 |
 | Baja prioridad/Futuro | 6 |
-| **Total** | **30** |
+| **Total** | **22** |
 
 ---
 

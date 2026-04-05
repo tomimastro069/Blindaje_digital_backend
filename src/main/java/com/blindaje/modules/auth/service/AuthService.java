@@ -38,6 +38,39 @@ public class AuthService {
                 user.getTenantId()
         );
 
-        return new LoginResponse(token, null);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(
+                user.getUsername(),
+                user.getRole().name(),
+                user.getId(),
+                user.getTenantId()
+        );
+
+        return new LoginResponse(token, refreshToken);
+    }
+
+    public LoginResponse refreshToken(String refreshToken) {
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new RuntimeException("Refresh token inválido o expirado");
+        }
+
+        String username = jwtTokenProvider.getUsernameFromToken(refreshToken);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        String newToken = jwtTokenProvider.generateToken(
+                user.getUsername(),
+                user.getRole().name(),
+                user.getId(),
+                user.getTenantId()
+        );
+
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(
+                user.getUsername(),
+                user.getRole().name(),
+                user.getId(),
+                user.getTenantId()
+        );
+
+        return new LoginResponse(newToken, newRefreshToken);
     }
 }

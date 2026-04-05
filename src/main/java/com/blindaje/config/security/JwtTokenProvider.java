@@ -13,11 +13,14 @@ public class JwtTokenProvider {
 
     private final SecretKey key;
     private final long expirationMs;
+    private final long refreshExpirationMs;
 
     public JwtTokenProvider(@Value("${jwt.secret}") String secret,
-                            @Value("${jwt.expiration}") long expirationMs) {
+                            @Value("${jwt.expiration}") long expirationMs,
+                            @Value("${jwt.refreshExpiration:604800000}") long refreshExpirationMs) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
         this.expirationMs = expirationMs;
+        this.refreshExpirationMs = refreshExpirationMs;
     }
 
     public String generateToken(String username, String role, Long userId, String tenantId) {
@@ -28,6 +31,18 @@ public class JwtTokenProvider {
                 .claim("tenantId", tenantId)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
+                .signWith(key)
+                .compact();
+    }
+
+    public String generateRefreshToken(String username, String role, Long userId, String tenantId) {
+        return Jwts.builder()
+                .subject(username)
+                .claim("role", role)
+                .claim("userId", userId)
+                .claim("tenantId", tenantId)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + refreshExpirationMs))
                 .signWith(key)
                 .compact();
     }

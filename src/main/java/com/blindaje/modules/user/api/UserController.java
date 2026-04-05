@@ -59,8 +59,6 @@ public class UserController {
                     .toList();
             return ResponseEntity.ok(usuarios);
         } catch (Exception e) {
-            System.out.println(">>> ERROR: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }
