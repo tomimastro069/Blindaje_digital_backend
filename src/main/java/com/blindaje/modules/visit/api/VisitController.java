@@ -44,7 +44,7 @@ public class VisitController {
     public ResponseEntity<List<Visit>> misVisitas(HttpServletRequest httpRequest) {
         String token = extraerToken(httpRequest);
         Long residentId = jwtTokenProvider.getUserIdFromToken(token);
-        return ResponseEntity.ok(visitService.obtenerVisitasPorResidente(residentId));
+        return ResponseEntity.ok(visitService.obtenerVisita sPorResidente(residentId));
     }
 
     // Guardia ve todas las visitas del tenant
@@ -63,6 +63,20 @@ public class VisitController {
             @Valid @RequestBody CompanionRequest request,
             HttpServletRequest httpRequest) {
         return ResponseEntity.ok(visitService.agregarAcompanantes(visitId, request));
+    }
+
+    // Guardia registra entrada de la visita
+    @PostMapping("/{visitId}/entry")
+    @PreAuthorize("hasRole('GUARD') or hasRole('ADMIN')")
+    public ResponseEntity<Visit> registrarEntrada(@PathVariable Long visitId) {
+        return ResponseEntity.ok(visitService.registrarEntrada(visitId));
+    }
+
+    // Guardia registra salida de la visita
+    @PostMapping("/{visitId}/exit")
+    @PreAuthorize("hasRole('GUARD') or hasRole('ADMIN')")
+    public ResponseEntity<Visit> registrarSalida(@PathVariable Long visitId) {
+        return ResponseEntity.ok(visitService.registrarSalida(visitId));
     }
 
     private String extraerToken(HttpServletRequest request) {

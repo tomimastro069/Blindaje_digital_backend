@@ -69,4 +69,28 @@ public class VisitService {
     public List<Visit> obtenerVisitasPorTenant(String tenantId) {
         return visitRepository.findByTenantId(tenantId);
     }
+
+    public Visit registrarEntrada(Long visitId) {
+        Visit visit = visitRepository.findById(visitId)
+                .orElseThrow(() -> new RuntimeException("Visita no encontrada: " + visitId));
+
+        visit.setEntryTime(java.time.LocalDateTime.now());
+        visit.setStatus(com.blindaje.modules.visit.domain.VisitStatus.IN_PROGRESS);
+        
+        return visitRepository.save(visit);
+    }
+
+    public Visit registrarSalida(Long visitId) {
+        Visit visit = visitRepository.findById(visitId)
+                .orElseThrow(() -> new RuntimeException("Visita no encontrada: " + visitId));
+
+        if (visit.getEntryTime() == null) {
+            throw new RuntimeException("No se puede registrar la salida de una visita sin entrada");
+        }
+
+        visit.setExitTime(java.time.LocalDateTime.now());
+        visit.setStatus(com.blindaje.modules.visit.domain.VisitStatus.COMPLETED);
+
+        return visitRepository.save(visit);
+    }
 }
