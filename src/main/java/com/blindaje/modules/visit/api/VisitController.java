@@ -44,7 +44,7 @@ public class VisitController {
     public ResponseEntity<List<Visit>> misVisitas(HttpServletRequest httpRequest) {
         String token = extraerToken(httpRequest);
         Long residentId = jwtTokenProvider.getUserIdFromToken(token);
-        return ResponseEntity.ok(visitService.obtenerVisita sPorResidente(residentId));
+        return ResponseEntity.ok(visitService.obtenerVisitasPorResidente(residentId));
     }
 
     // Guardia ve todas las visitas del tenant
