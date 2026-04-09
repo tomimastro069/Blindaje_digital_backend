@@ -22,8 +22,8 @@ public class Task {
     private TaskStatus status;
 
     private LocalDateTime deadline;
-    private Long createdByGuardId;   
-    private Long assignedToGuardId;  
+    private Long createdByGuardId;
+    private Long assignedToGuardId;
     private String tenantId;
     private LocalDateTime createdAt;
 

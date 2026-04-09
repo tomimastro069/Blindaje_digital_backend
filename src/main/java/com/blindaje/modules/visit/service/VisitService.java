@@ -19,8 +19,8 @@ public class VisitService {
     private final CompanionRepository companionRepository;
 
     public VisitService(VisitRepository visitRepository,
-                        NotificacionService notificacionService,
-                        CompanionRepository companionRepository) {
+            NotificacionService notificacionService,
+            CompanionRepository companionRepository) {
         this.visitRepository = visitRepository;
         this.notificacionService = notificacionService;
         this.companionRepository = companionRepository;
@@ -34,8 +34,7 @@ public class VisitService {
                 request.getVehiclePlate(),
                 request.getScheduledAt(),
                 tenantId,
-                residentId
-        );
+                residentId);
         Visit saved = visitRepository.save(visit);
 
         // Notificar a todos los guardias del tenant en tiempo real
@@ -43,24 +42,24 @@ public class VisitService {
                 tenantId,
                 "Nueva visita registrada",
                 "El visitante " + request.getVisitorName() +
-                " (DNI: " + request.getVisitorDocument() + ")" +
-                " tiene una visita programada para " + request.getScheduledAt()
-        );
+                        " (DNI: " + request.getVisitorDocument() + ")" +
+                        " tiene una visita programada para " + request.getScheduledAt());
 
         return saved;
     }
+
     public Visit agregarAcompanantes(Long visitId, CompanionRequest request) {
-    Visit visit = visitRepository.findById(visitId)
-            .orElseThrow(() -> new RuntimeException("Visita no encontrada: " + visitId));
+        Visit visit = visitRepository.findById(visitId)
+                .orElseThrow(() -> new RuntimeException("Visita no encontrada: " + visitId));
 
-    List<Companion> companions = request.getCompanions().stream()
-            .map(c -> new Companion(c.getName(), c.getDocument(), visit))
-            .toList();
+        List<Companion> companions = request.getCompanions().stream()
+                .map(c -> new Companion(c.getName(), c.getDocument(), visit))
+                .toList();
 
-    companionRepository.saveAll(companions);
-    visit.getCompanions().addAll(companions);
-    return visit;
-}
+        companionRepository.saveAll(companions);
+        visit.getCompanions().addAll(companions);
+        return visit;
+    }
 
     public List<Visit> obtenerVisitasPorResidente(Long residentId) {
         return visitRepository.findByResidentId(residentId);
@@ -76,7 +75,7 @@ public class VisitService {
 
         visit.setEntryTime(java.time.LocalDateTime.now());
         visit.setStatus(com.blindaje.modules.visit.domain.VisitStatus.IN_PROGRESS);
-        
+
         return visitRepository.save(visit);
     }
 
